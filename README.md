@@ -1,1 +1,1 @@
-It's a test created repository
+It's a repository for anything that related to modern program technologies
