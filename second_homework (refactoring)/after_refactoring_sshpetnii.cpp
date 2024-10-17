@@ -1,4 +1,3 @@
-#include <cmath>
 #include <iostream>
 
 void print_sequence(const char* const comment, float* sequence, const int size);
