@@ -28,6 +28,7 @@ int main()
         delete[] sequence;
     }
 
+    delete[] name_of_seq;
     return 0;
 }
 
