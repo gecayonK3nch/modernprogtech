@@ -8,7 +8,7 @@ int main()
     const int seq_size = 10;
     float* first_sequence = new float[seq_size]; 
     float* second_sequence = new float[seq_size];
-    float* third_sequence = new float[10];
+    float* third_sequence = new float[seq_size];
     float sum_of_first_seq = 0, sum_of_second_seq = 0, sum_of_third_seq = 0;
 
     generate_sequence(first_sequence, seq_size, &sum_of_first_seq);
