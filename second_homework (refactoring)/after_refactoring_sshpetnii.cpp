@@ -1,38 +1,39 @@
+#include <format>
 #include <iostream>
+#include <map>
 
-void print_sequence(const char* const comment, float* sequence, const int size);
 void generate_sequence(float* sequence, const int size, float* sum);
+void print_sequence(const char* const comment, float* sequence, const int size);
+int calculate_ariphmetic_mean(const float sum, const int count);
 
 int main()
 {
     const int seq_size = 10;
-    float* first_sequence = new float[seq_size]; 
-    float* second_sequence = new float[seq_size];
-    float* third_sequence = new float[seq_size];
-    float sum_of_first_seq = 0, sum_of_second_seq = 0, sum_of_third_seq = 0;
+    const char* name_of_seq[3] = {
+        "Первая последовательность:",
+        "Вторая последовательность:",
+        "Третья последовательность:"
+    };
 
-    generate_sequence(first_sequence, seq_size, &sum_of_first_seq);
-    generate_sequence(second_sequence, seq_size, &sum_of_second_seq);
-    generate_sequence(third_sequence, seq_size, &sum_of_third_seq);
+    for (int i = 1; i <= 3; ++i) {
+        float* sequence = new float[seq_size]; 
+        float sum_of_seq = 0;
+        float ariphmetic_mean = calculate_ariphmetic_mean(sum_of_seq, seq_size);
 
-    print_sequence("Первая последовательность:", first_sequence, seq_size);
-    std::cout <<"Среднее первой последовательности = " << sum_of_first_seq / seq_size << std::endl;
-    std::cout << std::endl;
+        generate_sequence(sequence, seq_size, &sum_of_seq);
 
-    print_sequence("Вторая последовательность:", second_sequence, seq_size);
-    std::cout <<"Среднее второй последовательности = " << sum_of_second_seq / seq_size << std::endl;
-    std::cout << std:: endl;
+        print_sequence(name_of_seq[i - 1], sequence, seq_size);
+        std::cout << "Среднее этой последовательности = " << ariphmetic_mean << std::endl;
+        std::cout << std::endl;
+        delete[] sequence;
+    }
 
-    print_sequence("Третья последовательность:", third_sequence, seq_size);
-    std::cout <<"Среднее третьей последовательности = " << sum_of_third_seq / seq_size << std::endl;
-    std::cout << std::endl;
-
-    delete[] first_sequence, second_sequence, third_sequence;
     return 0;
 }
 
 void print_sequence(const char* const comment, float* sequence, const int size) {
     static const char space = ' ';
+
     std::cout << comment << std::endl;
     for (int i = 0; i < size; ++i) {
         std::cout << space << sequence[i];
@@ -45,4 +46,8 @@ void generate_sequence(float* sequence, const int size, float* sum) {
         sequence[i] = rand() % 10;
         *sum += sequence[i];
     }
+}
+
+int calculate_ariphmetic_mean(const float sum, const int count) {
+    return sum / count;
 }
