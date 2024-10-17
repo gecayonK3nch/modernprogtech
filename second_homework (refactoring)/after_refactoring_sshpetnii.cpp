@@ -32,7 +32,7 @@ int main()
 }
 
 void print_sequence(const char* const comment, float* sequence, const int size) {
-    const char space = ' ';
+    static const char space = ' ';
     std::cout << comment << std::endl;
     for (int i = 0; i < size; ++i) {
         std::cout << space << sequence[i];
