@@ -10,7 +10,11 @@ int main()
     const int example = counters::int_pairs(arr, arr_size);
     arr = counters::merge::counting_sort(arr, arr_size, &cnt);
 
-    std::cout << cnt << " " << example;
+    std::cout
+        << "Количество интересных пар, найденных быстрым алгоритмом: "
+        << cnt
+        << "\nЭталонное количество пар: "
+        << example;
 
     return 0;
 }
