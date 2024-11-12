@@ -2,53 +2,49 @@
 #include <iostream>
 #include <map>
 
-void generate_sequence(float* sequence, const int size, float* sum);
-void print_sequence(const char* const comment, float* sequence, const int size);
-int calculate_ariphmetic_mean(const float sum, const int count);
+float calculate_average(const int sum, const int count);
+void generate_arr(int* arr, const int size, int* sum);
+void print_arr(int* arr, const int size);
 
 int main()
 {
-    const int seq_size = 10;
-    const char* name_of_seq[3] = {
-        "Первая последовательность:",
-        "Вторая последовательность:",
-        "Третья последовательность:"
-    };
+    const int arr_size = 10;
+    const int arr_from = 1;
+    const int arr_to = 3;
 
-    for (int i = 1; i <= 3; ++i) {
-        float* sequence = new float[seq_size]; 
-        float sum_of_seq = 0;
-        float ariphmetic_mean = calculate_ariphmetic_mean(sum_of_seq, seq_size);
+    for (int i = arr_from; i <= arr_to; ++i) {
+        int* arr = new int[arr_size]; 
+        int sum_of_arr = 0;
 
-        generate_sequence(sequence, seq_size, &sum_of_seq);
+        generate_arr(arr, arr_size, &sum_of_arr);
+        const float average = calculate_average(sum_of_arr, arr_size);
 
-        print_sequence(name_of_seq[i - 1], sequence, seq_size);
-        std::cout << "Среднее этой последовательности = " << ariphmetic_mean << std::endl;
+        std::cout << "Последовательность номер " << i << std::endl;
+        print_arr(arr, arr_size);
+        std::cout << "Среднее этой последовательности = " << average << std::endl;
         std::cout << std::endl;
-        delete[] sequence;
+        delete[] arr;
     }
 
-    delete[] name_of_seq;
     return 0;
 }
 
-void print_sequence(const char* const comment, float* sequence, const int size) {
+float calculate_average(const int sum, const int count) {
+    return float(sum) / count;
+}
+
+void generate_arr(int* arr, const int size, int* sum) {
+    for (int i = 0; i < size; ++i) {
+        arr[i] = rand() % 10;
+        *sum += arr[i];
+    }
+}
+
+void print_arr(int* arr, const int size) {
     static const char space = ' ';
 
-    std::cout << comment << std::endl;
     for (int i = 0; i < size; ++i) {
-        std::cout << space << sequence[i];
+        std::cout << space << arr[i];
     }
     std::cout << std::endl;
-}
-
-void generate_sequence(float* sequence, const int size, float* sum) {
-    for (int i = 0; i < size; ++i) {
-        sequence[i] = rand() % 10;
-        *sum += sequence[i];
-    }
-}
-
-int calculate_ariphmetic_mean(const float sum, const int count) {
-    return sum / count;
 }
