@@ -1,6 +1,4 @@
-#include <format>
 #include <iostream>
-#include <map>
 
 float calculate_average(const int sum, const int count);
 void generate_arr(int* arr, const int size, int* sum);
