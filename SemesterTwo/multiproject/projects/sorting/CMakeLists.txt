@@ -1,3 +1,6 @@
 project(sorting)
 
-add_executable(${PROJECT_NAME} my_algorithms.cpp main.cpp)
+add_library(sorting_lib "")
+
+add_subdirectory(src)
+add_subdirectory(test)

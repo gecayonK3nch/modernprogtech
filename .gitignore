@@ -1,3 +1,6 @@
 *.exe
 .vscode
-build*
+SemesterOne/parser_ManyFiles/build*
+build_*
+lib/
+Testing/
