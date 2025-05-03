@@ -7,7 +7,7 @@ namespace ussr {
 		private:
 			int* numbers;
 			int length;
-			int sign;
+			int sign = 0;
 		
 		public:
 			LongNumber();
@@ -26,6 +26,7 @@ namespace ussr {
 			bool operator > (const LongNumber& x) const;
 			bool operator < (const LongNumber& x) const;
 			
+			LongNumber operator - () const;
 			LongNumber operator + (const LongNumber& x) const;
 			LongNumber operator - (const LongNumber& x) const;
 			LongNumber operator * (const LongNumber& x) const;
