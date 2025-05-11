@@ -4,6 +4,8 @@
 
 using biv::Vector;
 
+template class biv::Vector<int>;
+
 template<typename T>
 const std::size_t Vector<T>::START_CAPACITY = 10;
 
@@ -98,19 +100,3 @@ bool Vector<T>::remove_first(const T& value) {
 	return false;
 }
 
-int main() {
-	Vector<int> vec;
-	vec.push_back(1);
-	vec.push_back(2);
-	vec.push_back(3);
-	vec.print();
-
-	vec.insert(1, 4);
-	vec.print();
-
-	vec.remove_first(2);
-	if (!vec.has_item(2)) vec.print();
-	std::cout << vec.get_size() << std::endl;
-
-	return 0;
-}

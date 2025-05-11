@@ -4,6 +4,8 @@
 
 using biv::DoublyLinkedList;
 
+template class biv::DoublyLinkedList<int>;
+
 template<typename T>
 DoublyLinkedList<T>::~DoublyLinkedList() {
 	Node* current = begin;
@@ -84,17 +86,4 @@ bool DoublyLinkedList<T>::remove_first(const T& value) noexcept {
 	}
 	std::cout << "Value not found: " << value << std::endl;
 	return false;
-}
-
-
-int main() {
-	DoublyLinkedList<int> list;
-	list.push_back(1);
-	list.push_back(2);
-	list.push_back(3);
-	list.print();
-	std::cout << "Size: " << list.get_size() << std::endl;
-	list.remove_first(2);
-	if (!list.has_item(2)) list.print();
-	std::cout << "Size: " << list.get_size() << std::endl;
 }

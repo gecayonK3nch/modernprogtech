@@ -55,6 +55,7 @@ TEST(LongNumberTest, DivisionAndModulo) {
     
     EXPECT_EQ(a / b, ussr::LongNumber("9"));
     EXPECT_EQ(b / c, ussr::LongNumber("-3"));
+    EXPECT_EQ(ussr::LongNumber("-19602") / ussr::LongNumber("198") / ussr::LongNumber("-1"), ussr::LongNumber("99"));
 
  
     EXPECT_EQ(a % b, ussr::LongNumber("1"));

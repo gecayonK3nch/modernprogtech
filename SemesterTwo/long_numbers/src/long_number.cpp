@@ -68,17 +68,16 @@ LongNumber& LongNumber::operator = (const LongNumber& x) {
 }
 
 LongNumber& LongNumber::operator = (LongNumber&& x) {
-	if (this != &x) {
-        if (numbers) {
-            delete[] numbers;
-        }
-        numbers = x.numbers;
-        length = x.length;
-        sign = x.sign;
-        x.numbers = nullptr;
-        x.length = 0;
-        x.sign = 0;
-    }
+	if (numbers) {
+		delete[] numbers;
+	}
+	numbers = x.numbers;
+	length = x.length;
+	sign = x.sign;
+	x.numbers = nullptr;
+	x.length = 0;
+	x.sign = 0;
+
     return *this;
 }
 
@@ -97,11 +96,12 @@ bool LongNumber::operator != (const LongNumber& x) const {
 }
 
 bool LongNumber::operator > (const LongNumber& x) const {
+	if (this->sign != x.sign) return this->sign < x.sign;
+	if (sign == 1) return -x > -(*this);
 	if (this->length > x.length) return 1;
 	if (this->length < x.length) return 0;
-	if (this->sign != x.sign) return this->sign < x.sign;
 
-	for (int i = 0; i < length; i++)
+	for (int i = length - 1; i >= 0; i--)
 	{
 		if (this->numbers[i] > x.numbers[i]) return 1;
 		if(this->numbers[i] < x.numbers[i]) return 0;
@@ -256,13 +256,13 @@ LongNumber LongNumber::operator * (const LongNumber& x) const {
 }
 
 LongNumber LongNumber::operator / (const LongNumber& x) const {
-	if (x > *this) return LongNumber("0");
 	if (x == LongNumber("0")) throw std::invalid_argument("Division by zero");
 
 	LongNumber dividend(*this);
     dividend.sign = 0;
     LongNumber divisor(x);
     divisor.sign = 0;
+	if (divisor > dividend) return LongNumber("0");
 
 	LongNumber res;
     res.sign = sign ^ x.sign;
@@ -276,15 +276,20 @@ LongNumber LongNumber::operator / (const LongNumber& x) const {
         int digit = 0;
         while (current > divisor || current == divisor) {
             current = current - divisor;
-            digit++;
+			digit++;
         }
-        
-        res.numbers[i] = digit;
+
+		res.numbers[i] = digit;
     }
 
     while (res.length > 1 && res.numbers[res.length-1] == 0) {
         res.length--;
     }
+
+	if (sign && ((*this) % x != LongNumber("0"))) {
+		if (res.sign) res = res - LongNumber("1");
+		else res = res + LongNumber("1");
+	}
     
     return res;
 }
