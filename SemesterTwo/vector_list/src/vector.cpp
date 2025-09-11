@@ -20,7 +20,7 @@ Vector<T>::~Vector() {
 		delete[] arr;
 		arr = nullptr;
 	}
-	capacity = 0;
+	capacity = START_CAPACITY;
 	size = 0;
 }
 
