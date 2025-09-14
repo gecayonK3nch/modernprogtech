@@ -13,7 +13,6 @@ typedef struct SObject {
     bool IsFly;
 } TObject;
 
-char map[mapHeight][mapWidth + 1];
 sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize), "SuperMario");
 TObject mario;
 TObject *brick = nullptr;
@@ -154,6 +153,8 @@ int main()
             HorizonMoveMap(1);
         if (right)
             HorizonMoveMap(-1);
+
+        if (mario.y > mapHeight) CreateLevel();
 
         ClearMap();
         VertMoveObject(&mario);
