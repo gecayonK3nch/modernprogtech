@@ -94,25 +94,40 @@ int main()
 
     InitObject(&mario, 39, 10, 3, 3);
     InitObject(brick, 20, 20, 40, 5);
+    bool left = false, right = false, up = false;
 
     while (window.isOpen())
     {
         sf::Event event;
         while (window.pollEvent(event))
         {
-            sf::Keyboard::Key code = event.key.code;
-            if ((event.type == sf::Event::KeyPressed && code == sf::Keyboard::Escape) || event.type == sf::Event::Closed)
+            if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) || event.type == sf::Event::Closed)
                 window.close();
-            if (event.type == sf::Event::KeyPressed)
-            {
-                if (mario.IsFly == false && (code == sf::Keyboard::W || code == sf::Keyboard::Space || code == sf::Keyboard::Up))
-                    mario.vertSpeed = -1;
+            if (event.type == sf::Event::KeyPressed){
+                sf::Keyboard::Key code = event.key.code;
+                if (code == sf::Keyboard::W || code == sf::Keyboard::Space || code == sf::Keyboard::Up)
+                    up = true;
                 if (code == sf::Keyboard::A || code == sf::Keyboard::Left)
-                    HorizonMoveMap(1);
+                    left = true;
                 if (code == sf::Keyboard::D || code == sf::Keyboard::Right)
-                    HorizonMoveMap(-1); 
+                    right = true;
             }
+            if (event.type == sf::Event::KeyReleased){
+                sf::Keyboard::Key code = event.key.code;
+                if (code == sf::Keyboard::W || code == sf::Keyboard::Space || code == sf::Keyboard::Up)
+                    up = false;
+                if (code == sf::Keyboard::A || code == sf::Keyboard::Left)
+                    left = false;
+                if (code == sf::Keyboard::D || code == sf::Keyboard::Right)
+                    right = false;
+            } 
         }
+        if (mario.IsFly == false && up)
+            mario.vertSpeed = -1;
+        if (left)
+            HorizonMoveMap(1);
+        if (right)
+            HorizonMoveMap(-1);
 
         ClearMap();
         VertMoveObject(&mario);
@@ -120,8 +135,6 @@ int main()
         PutObjectOnMap(mario);
 
         ShowMap();
-
-        sf::sleep(sf::milliseconds(1));
     }
 
     return 0;
