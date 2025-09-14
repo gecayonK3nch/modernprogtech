@@ -14,9 +14,10 @@ typedef struct SObject {
 } TObject;
 
 char map[mapHeight][mapWidth + 1];
-sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize), "SuperMario SFML");
+sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize), "SuperMario");
 TObject mario;
-TObject brick[1];
+TObject *brick = nullptr;
+int bricklength;
 
 void ClearMap()
 {
@@ -49,12 +50,15 @@ void VertMoveObject(TObject *obj)
     obj->IsFly = true;
     obj->vertSpeed += 0.05;
     SetObjectPos(obj, obj->x, obj->y + obj->vertSpeed);
-    if (IsCollision(*obj, brick[0]))
-    {
-        obj->y -= obj->vertSpeed;
-        obj->vertSpeed = 0;
-        obj->IsFly = false;
-    }
+
+    for (int i = 0; i < bricklength; i++)
+        if (IsCollision(*obj, brick[i]))
+        {
+            obj->y -= obj->vertSpeed;
+            obj->vertSpeed = 0;
+            obj->IsFly = false;
+            break;
+        }
 }
 
 bool IsPosInMap(int x, int y)
@@ -80,7 +84,17 @@ void PutObjectOnMap(TObject obj)
 
 void HorizonMoveMap(float dx)
 {
-    brick[0].x += dx;
+    mario.x -= dx;
+    for (int i = 0; i < bricklength; i++)
+        if (IsCollision(mario, brick[i]))
+        {
+            mario.x += dx;
+            return;
+        }
+    mario.x += dx;
+
+    for (int i = 0; i < bricklength; i++)
+        brick[i].x += dx;
 }
 
 bool IsCollision(TObject o1, TObject o2)
@@ -88,12 +102,24 @@ bool IsCollision(TObject o1, TObject o2)
     return (((o1.x + o1.width) > o2.x) && (o1.x < (o2.x + o2.width)) && ((o1.y + o1.height) > o2.y) && (o1.y < (o2.y + o2.height)));
 }
 
+void CreateLevel()
+{
+    InitObject(&mario, 39, 10, 3, 3);
+
+    bricklength = 5;
+    brick = (TObject*)malloc(sizeof(*brick) * bricklength);
+    InitObject(brick+0, 20, 20, 40, 5);
+    InitObject(brick+1, 60, 15, 10, 10);
+    InitObject(brick+2, 80, 20, 20, 5);
+    InitObject(brick+3, 120, 15, 10, 10);
+    InitObject(brick+4, 150, 20, 40, 5);
+}
+
 
 int main()
 {
 
-    InitObject(&mario, 39, 10, 3, 3);
-    InitObject(brick, 20, 20, 40, 5);
+    CreateLevel();
     bool left = false, right = false, up = false;
 
     while (window.isOpen())
@@ -131,10 +157,12 @@ int main()
 
         ClearMap();
         VertMoveObject(&mario);
-        PutObjectOnMap(brick[0]);
+        for (int i = 0; i < bricklength; i++)
+            PutObjectOnMap(brick[i]);
         PutObjectOnMap(mario);
 
         ShowMap();
+        sf::sleep(sf::milliseconds(10));
     }
 
     return 0;
