@@ -11,6 +11,7 @@ typedef struct SObject {
     float width, height;
     float vertSpeed;
     bool IsFly;
+    char cType;
 } TObject;
 
 sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize), "SuperMario");
@@ -34,12 +35,13 @@ void SetObjectPos(TObject *obj, float xPos, float yPos)
     obj->y = yPos;
 }
 
-void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeight)
+void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeight, char inType)
 {
     SetObjectPos(obj, xPos, yPos);
     obj->width = oWidth;
     obj->height = oHeight;
     obj->vertSpeed = 0;
+    obj->cType = inType;
 }
 
 bool IsCollision(TObject o1, TObject o2);
@@ -73,11 +75,28 @@ void PutObjectOnMap(TObject obj)
     int iHeight = (int)round(obj.height) * cellSize;
     sf::VertexArray vertices(sf::PrimitiveType::Points);
 
+
     for (int i = ix; i < (ix + iWidth); i++)
         for (int j = iy; j < (iy + iHeight); j++)
-            if (IsPosInMap(i, j))
-                vertices.append({{(float)i, (float)j}, sf::Color::White, {(float)i, (float)j}});
+            if (IsPosInMap(i, j)){
+                int localX = i - ix; 
+                int localY = j - iy; 
+                if (obj.cType == 'b')
+                {
+                    float freq = 0.01f;      // частота волн
+                    float threshold = 0.5f;
 
+                    bool cond = (std::sin(localX * freq) + std::sin(localY * freq) < threshold);
+
+                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::Yellow : sf::Color::Red, {(float)i, (float)j}});
+                }
+                else if (obj.cType == 'm') {
+                    bool cond = ((i + j) % 2 == 0);
+
+                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::White : sf::Color::Cyan, {(float)i, (float)j}});
+                }
+            }
+    
     window.draw(vertices);
 }
 
@@ -103,15 +122,15 @@ bool IsCollision(TObject o1, TObject o2)
 
 void CreateLevel()
 {
-    InitObject(&mario, 39, 10, 3, 3);
+    InitObject(&mario, 39, 10, 3, 3, 'm');
 
     bricklength = 5;
-    brick = (TObject*)malloc(sizeof(*brick) * bricklength);
-    InitObject(brick+0, 20, 20, 40, 5);
-    InitObject(brick+1, 60, 15, 10, 10);
-    InitObject(brick+2, 80, 20, 20, 5);
-    InitObject(brick+3, 120, 15, 10, 10);
-    InitObject(brick+4, 150, 20, 40, 5);
+    brick = (TObject*)realloc(brick, sizeof(*brick) * bricklength);
+    InitObject(brick+0, 20, 20, 40, 5, 'b');
+    InitObject(brick+1, 60, 15, 10, 10, 'b');
+    InitObject(brick+2, 80, 20, 20, 5, 'b');
+    InitObject(brick+3, 120, 15, 10, 10, 'b');
+    InitObject(brick+4, 150, 20, 40, 5, 'b');
 }
 
 
