@@ -18,6 +18,7 @@ sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize)
 TObject mario;
 TObject *brick = nullptr;
 int bricklength;
+int lvl = 1;
 
 void ClearMap()
 {
@@ -45,6 +46,7 @@ void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeigh
 }
 
 bool IsCollision(TObject o1, TObject o2);
+void CreateLevel(int lvl);
 
 void VertMoveObject(TObject *obj)
 {
@@ -58,6 +60,13 @@ void VertMoveObject(TObject *obj)
             obj->y -= obj->vertSpeed;
             obj->vertSpeed = 0;
             obj->IsFly = false;
+            if (brick[i].cType == 'f')
+            {
+                lvl++;
+                if (lvl > 2) lvl = 1;
+                CreateLevel(lvl);
+                sf::sleep(sf::milliseconds(1000));
+            }
             break;
         }
 }
@@ -94,6 +103,10 @@ void PutObjectOnMap(TObject obj)
                     bool cond = ((i + j) % 2 == 0);
 
                     vertices.append({{(float)i, (float)j}, cond ? sf::Color::White : sf::Color::Cyan, {(float)i, (float)j}});
+                } else if (obj.cType == 'f') {
+                    bool cond = ((i + j) % 2 == 0);
+
+                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::Green : sf::Color::Cyan, {(float)i, (float)j}});
                 }
             }
     
@@ -120,24 +133,35 @@ bool IsCollision(TObject o1, TObject o2)
     return (((o1.x + o1.width) > o2.x) && (o1.x < (o2.x + o2.width)) && ((o1.y + o1.height) > o2.y) && (o1.y < (o2.y + o2.height)));
 }
 
-void CreateLevel()
+void CreateLevel(int lvl)
 {
     InitObject(&mario, 39, 10, 3, 3, 'm');
 
-    bricklength = 5;
-    brick = (TObject*)realloc(brick, sizeof(*brick) * bricklength);
-    InitObject(brick+0, 20, 20, 40, 5, 'b');
-    InitObject(brick+1, 60, 15, 10, 10, 'b');
-    InitObject(brick+2, 80, 20, 20, 5, 'b');
-    InitObject(brick+3, 120, 15, 10, 10, 'b');
-    InitObject(brick+4, 150, 20, 40, 5, 'b');
+    if (lvl == 1)
+    {
+        bricklength = 6;
+        brick = (TObject*)realloc(brick, sizeof(*brick) * bricklength);
+        InitObject(brick+0, 20, 20, 40, 5, 'b');
+        InitObject(brick+1, 60, 15, 10, 10, 'b');
+        InitObject(brick+2, 80, 20, 20, 5, 'b');
+        InitObject(brick+3, 120, 15, 10, 10, 'b');
+        InitObject(brick+4, 150, 20, 40, 5, 'b');
+        InitObject(brick+5, 210, 15, 10, 10, 'f');
+    } else if (lvl == 2) {
+        bricklength = 4;
+        brick = (TObject*)realloc(brick, sizeof(*brick) * bricklength);
+        InitObject(brick+0, 20, 20, 40, 5, 'b');
+        InitObject(brick+1, 80, 20, 15, 5, 'b');
+        InitObject(brick+2, 120, 15, 15, 10, 'b');
+        InitObject(brick+3, 160, 10, 15, 15, 'f');
+    }
 }
 
 
 int main()
 {
 
-    CreateLevel();
+    CreateLevel(lvl);
     bool left = false, right = false, up = false;
 
     while (window.isOpen())
@@ -173,7 +197,7 @@ int main()
         if (right)
             HorizonMoveMap(-1);
 
-        if (mario.y > mapHeight) CreateLevel();
+        if (mario.y > mapHeight) CreateLevel(lvl);
 
         ClearMap();
         VertMoveObject(&mario);
