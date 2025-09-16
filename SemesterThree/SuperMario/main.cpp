@@ -12,12 +12,18 @@ typedef struct SObject {
     float vertSpeed;
     bool IsFly;
     char cType;
+    float horizSpeed;
 } TObject;
 
 sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize), "SuperMario");
 TObject mario;
+
 TObject *brick = nullptr;
 int bricklength;
+
+TObject *moving = nullptr;
+int movinglength;
+
 int lvl = 1;
 
 void ClearMap()
@@ -43,6 +49,7 @@ void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeigh
     obj->height = oHeight;
     obj->vertSpeed = 0;
     obj->cType = inType;
+    obj->horizSpeed = 0.2;
 }
 
 bool IsCollision(TObject o1, TObject o2);
@@ -71,6 +78,36 @@ void VertMoveObject(TObject *obj)
         }
 }
 
+void MarioCollisison()
+{
+    for (int i = 0; i < movinglength; i++)
+        if (IsCollision(mario, moving[i]))
+        {
+            CreateLevel(lvl);
+        }
+}
+
+void HorizonMoveObject(TObject *obj)
+{
+    obj[0].x += obj[0].horizSpeed;
+
+    for (int i = 0; i < bricklength; i++)
+        if (IsCollision(obj[0], brick[i]))
+        {
+            obj[0].x -= obj[0].horizSpeed;
+            obj[0].horizSpeed = -obj[0].horizSpeed;
+            return;
+        }
+    
+    TObject tmp = *obj;
+    VertMoveObject(&tmp);
+    if (tmp.IsFly == true)
+    {
+        obj[0].x -= obj[0].horizSpeed;
+        obj[0].horizSpeed = -obj[0].horizSpeed;
+    }
+}
+
 bool IsPosInMap(int x, int y)
 {
     return ((x >= 0) && (x < mapWidth * cellSize) && (y >= 0) && (y < mapHeight * cellSize));
@@ -92,8 +129,8 @@ void PutObjectOnMap(TObject obj)
                 int localY = j - iy; 
                 if (obj.cType == 'b')
                 {
-                    float freq = 0.01f;      // частота волн
-                    float threshold = 0.5f;
+                    float freq = 0.01f * lvl;      // частота волн
+                    float threshold = 0.5f * lvl;
 
                     bool cond = (std::sin(localX * freq) + std::sin(localY * freq) < threshold);
 
@@ -107,6 +144,10 @@ void PutObjectOnMap(TObject obj)
                     bool cond = ((i + j) % 2 == 0);
 
                     vertices.append({{(float)i, (float)j}, cond ? sf::Color::Green : sf::Color::Cyan, {(float)i, (float)j}});
+                } else if (obj.cType == 'a') {
+                    bool cond = ((i + j) % 2 == 0);
+
+                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::Red : sf::Color::Magenta, {(float)i, (float)j}});
                 }
             }
     
@@ -126,6 +167,8 @@ void HorizonMoveMap(float dx)
 
     for (int i = 0; i < bricklength; i++)
         brick[i].x += dx;
+    for (int i = 0; i < movinglength; i++)
+        moving[i].x += dx;
 }
 
 bool IsCollision(TObject o1, TObject o2)
@@ -147,6 +190,9 @@ void CreateLevel(int lvl)
         InitObject(brick+3, 120, 15, 10, 10, 'b');
         InitObject(brick+4, 150, 20, 40, 5, 'b');
         InitObject(brick+5, 210, 15, 10, 10, 'f');
+        movinglength = 1;
+        moving = (TObject*)realloc(moving, sizeof (*moving) * movinglength);
+        InitObject(moving+0, 25, 10, 3, 2, 'a');
     } else if (lvl == 2) {
         bricklength = 4;
         brick = (TObject*)realloc(brick, sizeof(*brick) * bricklength);
@@ -201,12 +247,19 @@ int main()
 
         ClearMap();
         VertMoveObject(&mario);
+        MarioCollisison();
         for (int i = 0; i < bricklength; i++)
             PutObjectOnMap(brick[i]);
+        for (int i = 0; i < movinglength; i++)
+        {
+            VertMoveObject(moving + i);
+            HorizonMoveObject(moving + i);
+            PutObjectOnMap(moving[i]);
+        }
         PutObjectOnMap(mario);
 
         ShowMap();
-        sf::sleep(sf::milliseconds(10));
+        sf::sleep(sf::milliseconds(6));
     }
 
     return 0;
