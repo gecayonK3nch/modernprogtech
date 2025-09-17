@@ -16,6 +16,9 @@ typedef struct SObject {
 } TObject;
 
 sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize), "SuperMario");
+sf::Font font;
+sf::Text scoreText;
+float padding = 10.0f;
 TObject mario;
 
 TObject *brick = nullptr;
@@ -25,6 +28,8 @@ TObject *moving = nullptr;
 int movinglength;
 
 int lvl = 1;
+int score;
+int maxLvl;
 
 void ClearMap()
 {
@@ -56,6 +61,13 @@ bool IsCollision(TObject o1, TObject o2);
 void CreateLevel(int lvl);
 TObject *GetNewMoving();
 
+void PlayerDead()
+{
+    window.clear(sf::Color::Red);
+    sf::sleep(sf::milliseconds(500));
+    CreateLevel(lvl);
+}
+
 void VertMoveObject(TObject *obj)
 {
     obj->IsFly = true;
@@ -72,6 +84,7 @@ void VertMoveObject(TObject *obj)
             {
                 brick[i].cType = '-';
                 InitObject(GetNewMoving(), brick[i].x, brick[i].y - 3, 1, 1, 'o');
+                moving[movinglength - 1].vertSpeed = -0.7;
             }
             
             obj->y -= obj->vertSpeed;
@@ -79,9 +92,10 @@ void VertMoveObject(TObject *obj)
             if (brick[i].cType == 'f')
             {
                 lvl++;
-                if (lvl > 3) lvl = 1;
+                if (lvl > maxLvl) lvl = 1;
+
+                window.clear(sf::Color::Green);
                 CreateLevel(lvl);
-                sf::sleep(sf::milliseconds(1000));
             }
             break;
         }
@@ -103,13 +117,15 @@ void MarioCollisison()
             {
                 if ((mario.IsFly == true) && (mario.vertSpeed > 0) && (mario.y + mario.height < moving[i].y + moving[i].height * 0.5))
                 {
+                    score += 50;
                     DeleteMoving(i);
                     i--;
                     continue;
-                } else CreateLevel(lvl);
+                } else PlayerDead();
             }
             if (moving[i].cType == 'o')
             {
+                score += 100;
                 DeleteMoving(i);
                 i--;
                 continue;
@@ -230,13 +246,24 @@ TObject *GetNewMoving()
     return moving + movinglength - 1;
 }
 
+void PutScoreOnMap()
+{
+    scoreText.setString("Score: " + std::to_string(score));
+    sf::FloatRect bounds = scoreText.getLocalBounds();
+    scoreText.setOrigin(bounds.left + bounds.width, bounds.top);
+    scoreText.setPosition(bounds.width + padding, padding - bounds.top);
+    window.draw(scoreText);
+}
+
 void CreateLevel(int lvl)
 {
     bricklength = 0;
     brick = (TObject*)realloc(brick, 0);
     movinglength = 0;
     moving = (TObject*)realloc(moving, 0);
+
     InitObject(&mario, 39, 10, 3, 3, 'm');
+    score = 0;
 
     if (lvl == 1)
     {
@@ -280,6 +307,8 @@ void CreateLevel(int lvl)
         InitObject(GetNewMoving(), 120, 10, 3, 2, 'a');
         InitObject(GetNewMoving(), 130, 10, 3, 2, 'a');
     }
+
+    maxLvl = 3;
 }
 
 
@@ -288,6 +317,12 @@ int main()
 
     CreateLevel(lvl);
     bool left = false, right = false, up = false;
+    if (!font.loadFromFile("Ubuntu-B.ttf")) {
+        std::cerr << "Error loading font\n";
+    }
+    scoreText.setFont(font);
+    scoreText.setCharacterSize(24);
+    scoreText.setFillColor(sf::Color::White);
 
     while (window.isOpen())
     {
@@ -322,7 +357,7 @@ int main()
         if (right)
             HorizonMoveMap(-1);
 
-        if (mario.y > mapHeight) CreateLevel(lvl);
+        if (mario.y > mapHeight) PlayerDead();
 
         ClearMap();
         VertMoveObject(&mario);
@@ -343,9 +378,10 @@ int main()
             PutObjectOnMap(moving[i]);
         }
         PutObjectOnMap(mario);
+        PutScoreOnMap();
 
         ShowMap();
-        sf::sleep(sf::milliseconds(10));
+        sf::sleep(sf::milliseconds(8));
     }
 
     return 0;
