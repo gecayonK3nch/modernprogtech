@@ -1,337 +1,301 @@
 #include <SFML/Graphics.hpp>
 #include <cmath>
 #include <iostream>
+#include <vector>
+#include <string>
 
-#define mapWidth 80
-#define mapHeight 25
-#define cellSize 20
+constexpr int MAP_WIDTH = 80;
+constexpr int MAP_HEIGHT = 25;
+constexpr int CELL_SIZE = 20;
+constexpr float PADDING = 10.0f;
+constexpr float GRAVITY = 0.05f;
+constexpr float MARIO_JUMP_SPEED = -1.0f;
+constexpr float DEFAULT_HORIZONTAL_SPEED = 0.35f;
+constexpr int MAX_LEVEL = 3;
 
-typedef struct SObject {
+struct GameObject {
     float x, y;
     float width, height;
-    float vertSpeed;
-    bool IsFly;
-    char cType;
-    float horizSpeed;
-} TObject;
+    float verticalSpeed;
+    float horizontalSpeed;
+    bool isAirborne;
+    char type;
+};
 
-sf::RenderWindow window(sf::VideoMode(mapWidth * cellSize, mapHeight * cellSize), "SuperMario");
-sf::Font font;
-sf::Text scoreText;
-float padding = 10.0f;
-TObject mario;
+struct GameState {
+    GameObject mario;
+    std::vector<GameObject> bricks;
+    std::vector<GameObject> movingObjects;
+    int currentLevel;
+    int score;
+    int maxLevel;
+};
 
-TObject *brick = nullptr;
-int bricklength;
+void initializeLevel(GameState& state, int level);
+bool checkCollision(const GameObject& o1, const GameObject& o2);
 
-TObject *moving = nullptr;
-int movinglength;
-
-int lvl = 1;
-int score;
-int maxLvl;
-
-void ClearMap()
-{
-    window.clear(sf::Color::Black);
+GameObject createObject(float x, float y, float w, float h, char type) {
+    GameObject obj;
+    obj.x = x;
+    obj.y = y;
+    obj.width = w;
+    obj.height = h;
+    obj.verticalSpeed = 0;
+    obj.horizontalSpeed = DEFAULT_HORIZONTAL_SPEED;
+    obj.isAirborne = false;
+    obj.type = type;
+    return obj;
 }
 
-void ShowMap()
-{
-    window.display();
-}
-
-void SetObjectPos(TObject *obj, float xPos, float yPos)
-{
-    obj->x = xPos;
-    obj->y = yPos;
-}
-
-void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeight, char inType)
-{
-    SetObjectPos(obj, xPos, yPos);
-    obj->width = oWidth;
-    obj->height = oHeight;
-    obj->vertSpeed = 0;
-    obj->cType = inType;
-    obj->horizSpeed = 0.35;
-}
-
-bool IsCollision(TObject o1, TObject o2);
-void CreateLevel(int lvl);
-TObject *GetNewMoving();
-
-void PlayerDead()
-{
+void handlePlayerDeath(sf::RenderWindow& window, GameState& state) {
     window.clear(sf::Color::Red);
+    window.display();
     sf::sleep(sf::milliseconds(500));
-    CreateLevel(lvl);
+    initializeLevel(state, state.currentLevel);
 }
 
-void VertMoveObject(TObject *obj)
-{
-    obj->IsFly = true;
-    obj->vertSpeed += 0.05;
-    SetObjectPos(obj, obj->x, obj->y + obj->vertSpeed);
+void moveObjectVertically(GameObject& obj, GameState& state, sf::RenderWindow& window) {
+    obj.isAirborne = true;
+    obj.verticalSpeed += GRAVITY;
+    obj.y += obj.verticalSpeed;
 
-    for (int i = 0; i < bricklength; i++)
-        if (IsCollision(*obj, brick[i]))
-        {
-            if (obj[0].vertSpeed > 0)
-                obj[0].IsFly = false;
-
-            if ((brick[i].cType == 'c') && (obj[0].vertSpeed < 0) && (obj == &mario))
-            {
-                brick[i].cType = '-';
-                InitObject(GetNewMoving(), brick[i].x, brick[i].y - 3, 1, 1, 'o');
-                moving[movinglength - 1].vertSpeed = -0.7;
+    for (auto& brick : state.bricks) {
+        if (checkCollision(obj, brick)) {
+            if (obj.verticalSpeed > 0) {
+                obj.isAirborne = false;
             }
-            
-            obj->y -= obj->vertSpeed;
-            obj->vertSpeed = 0;
-            if (brick[i].cType == 'f')
-            {
-                lvl++;
-                if (lvl > maxLvl) lvl = 1;
+
+            if (brick.type == 'c' && obj.verticalSpeed < 0 && &obj == &state.mario) {
+                brick.type = '-';
+                GameObject coin = createObject(brick.x, brick.y - 3, 1, 1, 'o');
+                coin.verticalSpeed = -0.7f;
+                state.movingObjects.push_back(coin);
+            }
+
+            obj.y -= obj.verticalSpeed;
+            obj.verticalSpeed = 0;
+
+            if (brick.type == 'f' && &obj == &state.mario) {
+                state.currentLevel++;
+                if (state.currentLevel > state.maxLevel) state.currentLevel = 1;
 
                 window.clear(sf::Color::Green);
-                CreateLevel(lvl);
+                window.display();
+                initializeLevel(state, state.currentLevel);
+                return; 
             }
             break;
         }
+    }
 }
 
-void DeleteMoving(int i)
-{
-    movinglength--;
-    moving[i] = moving[movinglength];
-    moving = (TObject*)realloc(moving, sizeof(*moving) * movinglength);
-}
-
-void MarioCollisison()
-{
-    for (int i = 0; i < movinglength; i++)
-        if (IsCollision(mario, moving[i]))
-        {
-            if (moving[i].cType == 'a')
-            {
-                if ((mario.IsFly == true) && (mario.vertSpeed > 0) && (mario.y + mario.height < moving[i].y + moving[i].height * 0.5))
-                {
-                    score += 50;
-                    DeleteMoving(i);
-                    i--;
+void handleMarioCollisions(GameState& state, sf::RenderWindow& window) {
+    for (size_t i = 0; i < state.movingObjects.size(); ) {
+        if (checkCollision(state.mario, state.movingObjects[i])) {
+            if (state.movingObjects[i].type == 'a') {
+                if (state.mario.isAirborne && state.mario.verticalSpeed > 0 && 
+                    (state.mario.y + state.mario.height < state.movingObjects[i].y + state.movingObjects[i].height * 0.5)) {
+                    state.score += 50;
+                    state.movingObjects.erase(state.movingObjects.begin() + i);
                     continue;
-                } else PlayerDead();
+                } else {
+                    handlePlayerDeath(window, state);
+                    return;
+                }
             }
-            if (moving[i].cType == 'o')
-            {
-                score += 100;
-                DeleteMoving(i);
-                i--;
+            if (state.movingObjects[i].type == 'o') {
+                state.score += 100;
+                state.movingObjects.erase(state.movingObjects.begin() + i);
                 continue;
             }
         }
+        ++i;
+    }
 }
 
-void HorizonMoveObject(TObject *obj)
-{
-    obj[0].x += obj[0].horizSpeed;
+void moveObjectHorizontally(GameObject& obj, GameState& state, sf::RenderWindow& window) {
+    obj.x += obj.horizontalSpeed;
 
-    for (int i = 0; i < bricklength; i++)
-        if (IsCollision(obj[0], brick[i]))
-        {
-            obj[0].x -= obj[0].horizSpeed;
-            obj[0].horizSpeed = -obj[0].horizSpeed;
+    for (const auto& brick : state.bricks) {
+        if (checkCollision(obj, brick)) {
+            obj.x -= obj.horizontalSpeed;
+            obj.horizontalSpeed = -obj.horizontalSpeed;
             return;
         }
-    if (obj[0].cType == 'a')
-    {
-        TObject tmp = *obj;
-        VertMoveObject(&tmp);
-        if (tmp.IsFly == true)
-        {
-            obj[0].x -= obj[0].horizSpeed;
-            obj[0].horizSpeed = -obj[0].horizSpeed;
+    }
+
+    if (obj.type == 'a') {
+        GameObject temp = obj;
+        temp.isAirborne = true;
+        temp.verticalSpeed += GRAVITY;
+        temp.y += temp.verticalSpeed;
+        
+        bool wouldFall = true;
+        for (const auto& brick : state.bricks) {
+            if (checkCollision(temp, brick)) {
+                wouldFall = false;
+                break;
+            }
+        }
+        
+        if (wouldFall) {
+            obj.x -= obj.horizontalSpeed;
+            obj.horizontalSpeed = -obj.horizontalSpeed;
         }
     }
 }
 
-bool IsPosInMap(int x, int y)
-{
-    return ((x >= 0) && (x < mapWidth * cellSize) && (y >= 0) && (y < mapHeight * cellSize));
+bool isPositionInMap(int x, int y) {
+    return (x >= 0 && x < MAP_WIDTH * CELL_SIZE && y >= 0 && y < MAP_HEIGHT * CELL_SIZE);
 }
 
-void PutObjectOnMap(TObject obj)
-{
-    int ix = (int)round(obj.x) * cellSize;
-    int iy = (int)round(obj.y) * cellSize;
-    int iWidth = (int)round(obj.width) * cellSize;
-    int iHeight = (int)round(obj.height) * cellSize;
+void drawObject(sf::RenderWindow& window, const GameObject& obj, int level) {
+    int ix = static_cast<int>(std::round(obj.x)) * CELL_SIZE;
+    int iy = static_cast<int>(std::round(obj.y)) * CELL_SIZE;
+    int iWidth = static_cast<int>(std::round(obj.width)) * CELL_SIZE;
+    int iHeight = static_cast<int>(std::round(obj.height)) * CELL_SIZE;
+    
     sf::VertexArray vertices(sf::PrimitiveType::Points);
 
+    for (int i = ix; i < (ix + iWidth); i++) {
+        for (int j = iy; j < (iy + iHeight); j++) {
+            if (isPositionInMap(i, j)) {
+                int localX = i - ix;
+                int localY = j - iy;
+                sf::Color color = sf::Color::Magenta;
 
-    for (int i = ix; i < (ix + iWidth); i++)
-        for (int j = iy; j < (iy + iHeight); j++)
-            if (IsPosInMap(i, j)){
-                int localX = i - ix; 
-                int localY = j - iy; 
-                if (obj.cType == 'b')
-                {
-                    float freq = 0.01f * lvl;      // частота волн
-                    float threshold = 0.5f * lvl;
-
+                if (obj.type == 'b') {
+                    float freq = 0.01f * level;
+                    float threshold = 0.5f * level;
                     bool cond = (std::sin(localX * freq) + std::sin(localY * freq) < threshold);
-
-                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::Yellow : sf::Color::Red, {(float)i, (float)j}});
+                    color = cond ? sf::Color::Yellow : sf::Color::Red;
+                } else if (obj.type == 'm') {
+                    bool cond = ((i + j) % 2 == 0);
+                    color = cond ? sf::Color::White : sf::Color::Cyan;
+                } else if (obj.type == 'f') {
+                    bool cond = ((i + j) % 2 == 0);
+                    color = cond ? sf::Color::Green : sf::Color::Cyan;
+                } else if (obj.type == 'a') {
+                    bool cond = ((i + j) % 2 == 0);
+                    color = cond ? sf::Color::Red : sf::Color::Magenta;
+                } else if (obj.type == 'c') {
+                    color = sf::Color::Blue;
+                } else if (obj.type == '-') {
+                    bool cond = ((i + j) % 2 == 0);
+                    color = cond ? sf::Color::Red : sf::Color::Yellow;
+                } else if (obj.type == 'o') {
+                    color = sf::Color::Yellow;
                 }
-                else if (obj.cType == 'm') {
-                    bool cond = ((i + j) % 2 == 0);
-
-                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::White : sf::Color::Cyan, {(float)i, (float)j}});
-                } else if (obj.cType == 'f') {
-                    bool cond = ((i + j) % 2 == 0);
-
-                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::Green : sf::Color::Cyan, {(float)i, (float)j}});
-                } else if (obj.cType == 'a') {
-                    bool cond = ((i + j) % 2 == 0);
-
-                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::Red : sf::Color::Magenta, {(float)i, (float)j}});
-                } else if (obj.cType == 'c') {
-                    vertices.append({{(float)i, (float)j}, sf::Color::Blue, {(float)i, (float)j}});
-                } else if (obj.cType == '-') {
-                    bool cond = ((i + j) % 2 == 0);
-
-                    vertices.append({{(float)i, (float)j}, cond ? sf::Color::Red : sf::Color::Yellow, {(float)i, (float)j}});
-                } else if (obj.cType == 'o') {
-                    vertices.append({{(float)i, (float)j}, sf::Color::Yellow, {(float)i, (float)j}});
-                }
+                
+                vertices.append(sf::Vertex(sf::Vector2f((float)i, (float)j), color));
             }
-    
+        }
+    }
     window.draw(vertices);
 }
 
-void HorizonMoveMap(float dx)
-{
-    mario.x -= dx;
-    for (int i = 0; i < bricklength; i++)
-        if (IsCollision(mario, brick[i]))
-        {
-            mario.x += dx;
+void scrollMap(float dx, GameState& state) {
+    state.mario.x -= dx;
+    for (const auto& brick : state.bricks) {
+        if (checkCollision(state.mario, brick)) {
+            state.mario.x += dx;
             return;
         }
-    mario.x += dx;
+    }
+    state.mario.x += dx;
 
-    for (int i = 0; i < bricklength; i++)
-        brick[i].x += dx;
-    for (int i = 0; i < movinglength; i++)
-        moving[i].x += dx;
+    for (auto& brick : state.bricks) brick.x += dx;
+    for (auto& obj : state.movingObjects) obj.x += dx;
 }
 
-bool IsCollision(TObject o1, TObject o2)
-{
-    return (((o1.x + o1.width) > o2.x) && (o1.x < (o2.x + o2.width)) && ((o1.y + o1.height) > o2.y) && (o1.y < (o2.y + o2.height)));
+bool checkCollision(const GameObject& o1, const GameObject& o2) {
+    return (o1.x + o1.width > o2.x) && (o1.x < o2.x + o2.width) &&
+           (o1.y + o1.height > o2.y) && (o1.y < o2.y + o2.height);
 }
 
-TObject *GetNewBrick()
-{
-    bricklength++;
-    brick = (TObject*)realloc(brick, sizeof(*brick) * bricklength);
-    return brick + bricklength - 1;
-}
-
-TObject *GetNewMoving()
-{
-    movinglength++;
-    moving = (TObject*)realloc(moving, sizeof(*moving) * movinglength);
-    return moving + movinglength - 1;
-}
-
-void PutScoreOnMap()
-{
+void drawScore(sf::RenderWindow& window, sf::Text& scoreText, int score) {
     scoreText.setString("Score: " + std::to_string(score));
     sf::FloatRect bounds = scoreText.getLocalBounds();
     scoreText.setOrigin(bounds.left + bounds.width, bounds.top);
-    scoreText.setPosition(bounds.width + padding, padding - bounds.top);
+    scoreText.setPosition(bounds.width + PADDING, PADDING - bounds.top);
     window.draw(scoreText);
 }
 
-void CreateLevel(int lvl)
-{
-    bricklength = 0;
-    brick = (TObject*)realloc(brick, 0);
-    movinglength = 0;
-    moving = (TObject*)realloc(moving, 0);
+void initializeLevel(GameState& state, int level) {
+    state.bricks.clear();
+    state.movingObjects.clear();
+    
+    state.mario = createObject(39, 10, 3, 3, 'm');
+    state.score = 0;
+    state.currentLevel = level;
+    state.maxLevel = MAX_LEVEL;
 
-    InitObject(&mario, 39, 10, 3, 3, 'm');
-    score = 0;
-
-    if (lvl == 1)
-    {
-        InitObject(GetNewBrick(), 20, 20, 40, 5, 'b');
-            InitObject(GetNewBrick(), 30, 10, 5, 3, 'c');
-            InitObject(GetNewBrick(), 50, 10, 5, 3, 'c');
-        InitObject(GetNewBrick(), 60, 15, 40, 10, 'b');
-            InitObject(GetNewBrick(), 60, 5, 10, 3, '-');
-            InitObject(GetNewBrick(), 70, 5, 5, 3, 'c');
-            InitObject(GetNewBrick(), 75, 5, 5, 3, '-');
-            InitObject(GetNewBrick(), 80, 5, 5, 3, 'c');
-            InitObject(GetNewBrick(), 85, 5, 10, 3, '-');
-        InitObject(GetNewBrick(), 80, 20, 20, 5, 'b');
-        InitObject(GetNewBrick(), 120, 15, 10, 10, 'b');
-        InitObject(GetNewBrick(), 150, 20, 40, 5, 'b');
-        InitObject(GetNewBrick(), 210, 15, 10, 10, 'f');
+    if (level == 1) {
+        state.bricks.push_back(createObject(20, 20, 40, 5, 'b'));
+        state.bricks.push_back(createObject(30, 10, 5, 3, 'c'));
+        state.bricks.push_back(createObject(50, 10, 5, 3, 'c'));
+        state.bricks.push_back(createObject(60, 15, 40, 10, 'b'));
+        state.bricks.push_back(createObject(60, 5, 10, 3, '-'));
+        state.bricks.push_back(createObject(70, 5, 5, 3, 'c'));
+        state.bricks.push_back(createObject(75, 5, 5, 3, '-'));
+        state.bricks.push_back(createObject(80, 5, 5, 3, 'c'));
+        state.bricks.push_back(createObject(85, 5, 10, 3, '-'));
+        state.bricks.push_back(createObject(80, 20, 20, 5, 'b'));
+        state.bricks.push_back(createObject(120, 15, 10, 10, 'b'));
+        state.bricks.push_back(createObject(150, 20, 40, 5, 'b'));
+        state.bricks.push_back(createObject(210, 15, 10, 10, 'f'));
+    } else if (level == 2) {
+        state.bricks.push_back(createObject(20, 20, 40, 5, 'b'));
+        state.bricks.push_back(createObject(60, 15, 10, 10, 'b'));
+        state.bricks.push_back(createObject(80, 20, 20, 5, 'b'));
+        state.bricks.push_back(createObject(120, 15, 10, 10, 'b'));
+        state.bricks.push_back(createObject(150, 20, 40, 5, 'b'));
+        state.bricks.push_back(createObject(210, 15, 10, 10, 'f'));
+        
+        state.movingObjects.push_back(createObject(25, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(80, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(65, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(120, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(160, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(175, 10, 3, 2, 'a'));
+    } else if (level == 3) {
+        state.bricks.push_back(createObject(20, 20, 40, 5, 'b'));
+        state.bricks.push_back(createObject(80, 20, 15, 5, 'b'));
+        state.bricks.push_back(createObject(120, 15, 15, 10, 'b'));
+        state.bricks.push_back(createObject(160, 10, 15, 15, 'f'));
+        
+        state.movingObjects.push_back(createObject(25, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(50, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(80, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(90, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(120, 10, 3, 2, 'a'));
+        state.movingObjects.push_back(createObject(130, 10, 3, 2, 'a'));
     }
-    if (lvl == 2)
-    {
-        InitObject(GetNewBrick(), 20, 20, 40, 5, 'b');
-        InitObject(GetNewBrick(), 60, 15, 10, 10, 'b');
-        InitObject(GetNewBrick(), 80, 20, 20, 5, 'b');
-        InitObject(GetNewBrick(), 120, 15, 10, 10, 'b');
-        InitObject(GetNewBrick(), 150, 20, 40, 5, 'b');
-        InitObject(GetNewBrick(), 210, 15, 10, 10, 'f');
-        InitObject(GetNewMoving(), 25, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 80, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 65, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 120, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 160, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 175, 10, 3, 2, 'a');
-    } else if (lvl == 3) {
-        InitObject(GetNewBrick(), 20, 20, 40, 5, 'b');
-        InitObject(GetNewBrick(), 80, 20, 15, 5, 'b');
-        InitObject(GetNewBrick(), 120, 15, 15, 10, 'b');
-        InitObject(GetNewBrick(), 160, 10, 15, 15, 'f');
-        InitObject(GetNewMoving(), 25, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 50, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 80, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 90, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 120, 10, 3, 2, 'a');
-        InitObject(GetNewMoving(), 130, 10, 3, 2, 'a');
-    }
-
-    maxLvl = 3;
 }
 
-
-int main()
-{
-
-    CreateLevel(lvl);
-    bool left = false, right = false, up = false;
+int main() {
+    sf::RenderWindow window(sf::VideoMode(MAP_WIDTH * CELL_SIZE, MAP_HEIGHT * CELL_SIZE), "SuperMario");
+    sf::Font font;
     if (!font.loadFromFile("Ubuntu-B.ttf")) {
         std::cerr << "Error loading font\n";
     }
+    sf::Text scoreText;
     scoreText.setFont(font);
     scoreText.setCharacterSize(24);
     scoreText.setFillColor(sf::Color::White);
 
-    while (window.isOpen())
-    {
+    GameState state;
+    initializeLevel(state, 1);
+
+    bool left = false, right = false, up = false;
+
+    while (window.isOpen()) {
         sf::Event event;
-        while (window.pollEvent(event))
-        {
+        while (window.pollEvent(event)) {
             if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) || event.type == sf::Event::Closed)
                 window.close();
-            if (event.type == sf::Event::KeyPressed){
+            
+            if (event.type == sf::Event::KeyPressed) {
                 sf::Keyboard::Key code = event.key.code;
                 if (code == sf::Keyboard::W || code == sf::Keyboard::Space || code == sf::Keyboard::Up)
                     up = true;
@@ -340,7 +304,7 @@ int main()
                 if (code == sf::Keyboard::D || code == sf::Keyboard::Right)
                     right = true;
             }
-            if (event.type == sf::Event::KeyReleased){
+            if (event.type == sf::Event::KeyReleased) {
                 sf::Keyboard::Key code = event.key.code;
                 if (code == sf::Keyboard::W || code == sf::Keyboard::Space || code == sf::Keyboard::Up)
                     up = false;
@@ -348,39 +312,45 @@ int main()
                     left = false;
                 if (code == sf::Keyboard::D || code == sf::Keyboard::Right)
                     right = false;
-            } 
-        }
-        if (mario.IsFly == false && up)
-            mario.vertSpeed = -1;
-        if (left)
-            HorizonMoveMap(1);
-        if (right)
-            HorizonMoveMap(-1);
-
-        if (mario.y > mapHeight) PlayerDead();
-
-        ClearMap();
-        VertMoveObject(&mario);
-        MarioCollisison();
-
-        for (int i = 0; i < bricklength; i++)
-            PutObjectOnMap(brick[i]);
-        for (int i = 0; i < movinglength; i++)
-        {
-            VertMoveObject(moving + i);
-            HorizonMoveObject(moving + i);
-            if (moving[i].y > mapHeight)
-            {
-                DeleteMoving(i);
-                i--;
-                continue;
             }
-            PutObjectOnMap(moving[i]);
         }
-        PutObjectOnMap(mario);
-        PutScoreOnMap();
 
-        ShowMap();
+        if (!state.mario.isAirborne && up)
+            state.mario.verticalSpeed = MARIO_JUMP_SPEED;
+        
+        if (left)
+            scrollMap(1, state);
+        if (right)
+            scrollMap(-1, state);
+
+        if (state.mario.y > MAP_HEIGHT) {
+            handlePlayerDeath(window, state);
+        }
+
+        window.clear(sf::Color::Black);
+        
+        moveObjectVertically(state.mario, state, window);
+        handleMarioCollisions(state, window);
+
+        for (const auto& brick : state.bricks)
+            drawObject(window, brick, state.currentLevel);
+            
+        for (size_t i = 0; i < state.movingObjects.size(); ) {
+            moveObjectVertically(state.movingObjects[i], state, window);
+            moveObjectHorizontally(state.movingObjects[i], state, window);
+            
+            if (state.movingObjects[i].y > MAP_HEIGHT) {
+                state.movingObjects.erase(state.movingObjects.begin() + i);
+            } else {
+                drawObject(window, state.movingObjects[i], state.currentLevel);
+                ++i;
+            }
+        }
+        
+        drawObject(window, state.mario, state.currentLevel);
+        drawScore(window, scoreText, state.score);
+
+        window.display();
         sf::sleep(sf::milliseconds(8));
     }
 
